@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>A Day to Remember</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Playfair+Display:ital@0;1&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --aurora1: #00c8a0;
+    --aurora2: #6a4fc8;
+    --aurora3: #e040fb;
+    --aurora4: #00bcd4;
+    --gold: #f5c842;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: 'Special Elite', monospace;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+
+  /* ── INTRO SCREEN ── */
+  #intro-screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 100; background: #000;
+    transition: opacity 1.5s ease;
+  }
+  #intro-title {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 8vw, 4.5rem);
+    letter-spacing: 0.15em;
+    opacity: 0;
+    animation: fadeInTitle 3s ease 1s forwards;
+    text-align: center;
+    color: #fff;
+  }
+  @keyframes fadeInTitle {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  #password-area {
+    margin-top: 3rem;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 1rem;
+    opacity: 0;
+    animation: fadeInTitle 2s ease 3.5s forwards;
+  }
+  #password-hint {
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    color: #888;
+    text-transform: uppercase;
+  }
+  #password-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #555;
+    color: #fff;
+    font-family: 'Special Elite', monospace;
+    font-size: 2rem;
+    letter-spacing: 0.5em;
+    text-align: center;
+    width: 12rem;
+    outline: none;
+    caret-color: #fff;
+    -webkit-text-security: disc;
+    text-security: disc;
+  }
+  #password-input::placeholder { color: #333; letter-spacing: 0.2em; }
+  #password-error {
+    color: #c0392b;
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    opacity: 0;
+    transition: opacity 0.4s;
+    min-height: 1.2em;
+  }
+
+  /* ── STORY SCREEN ── */
+  #story-screen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 1.5rem;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 50;
+    transition: background 3s ease;
+    background: #000;
+  }
+  #story-screen.active { opacity: 1; pointer-events: all; }
+
+  #text-box {
+    position: relative;
+    max-width: 680px;
+    width: 100%;
+    text-align: center;
+    z-index: 10;
+  }
+  #typed-text {
+    font-family: 'Special Elite', monospace;
+    font-size: clamp(1rem, 3.5vw, 1.4rem);
+    line-height: 1.85;
+    color: #fff;
+    min-height: 6em;
+    text-shadow: 0 0 18px rgba(255,255,255,0.25);
+    transition: opacity 0.8s ease;
+  }
+  #tap-hint {
+    margin-top: 2.5rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    color: rgba(255,255,255,0.35);
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  #tap-hint.visible { opacity: 1; }
+  @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.7} }
+
+  /* ── PARTICLES ── */
+  #particle-canvas {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 2s ease;
+  }
+  #particle-canvas.visible { opacity: 1; }
+
+  /* ── POLAROIDS ── */
+  #polaroid-container {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 8;
+    overflow: hidden;
+  }
+  .polaroid {
+    position: absolute;
+    background: #fff;
+    padding: 10px 10px 32px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    opacity: 0;
+    transform: rotate(var(--rot)) scale(0.3);
+    transition: all 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    cursor: default;
+    width: clamp(140px, 24vw, 220px);
+  }
+  .polaroid.visible {
+    opacity: 0.88;
+    transform: rotate(var(--rot)) scale(1);
+  }
+  .polaroid img {
+    width: 100%; aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: #222;
+  }
+
+  /* ── AURORA SCREEN ── */
+  #aurora-screen {
+    position: fixed; inset: 0;
+    z-index: 60;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 2s ease;
+    background: #000510;
+    overflow: hidden;
+  }
+  #aurora-screen.active { opacity: 1; pointer-events: all; }
+
+  #aurora-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+  #aurora-text-box {
+    position: absolute;
+    bottom: 12%;
+    left: 50%; transform: translateX(-50%);
+    width: min(680px, 90vw);
+    text-align: center;
+    z-index: 70;
+  }
+  #aurora-typed {
+    font-family: 'Special Elite', monospace;
+    font-size: clamp(0.95rem, 3vw, 1.3rem);
+    line-height: 1.9;
+    color: #fff;
+    text-shadow: 0 0 20px rgba(100,200,255,0.6);
+    min-height: 5em;
+    transition: opacity 0.8s;
+  }
+  #aurora-tap-hint {
+    margin-top: 2rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    color: rgba(200,240,255,0.4);
+    text-transform: uppercase;
+    animation: pulse 2s ease-in-out infinite;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  #aurora-tap-hint.visible { opacity: 1; }
+
+  /* Floating polaroids in aurora */
+  .aurora-photo {
+    position: absolute;
+    background: #fff;
+    padding: 8px 8px 26px;
+    box-shadow: 0 4px 24px rgba(0,200,160,0.3);
+    opacity: 0;
+    animation: floatPhoto var(--dur) ease-in-out var(--delay) infinite alternate;
+    width: clamp(80px, 12vw, 130px);
+  }
+  .aurora-photo img {
+    width: 100%; aspect-ratio: 1;
+    object-fit: cover; background: #222;
+  }
+  @keyframes floatPhoto {
+    from { transform: translateY(0) rotate(var(--rot)); opacity: 0.7; }
+    to   { transform: translateY(-40px) rotate(calc(var(--rot) * -1)); opacity: 0.95; }
+  }
+
+  /* ── HEART FINALE ── */
+  #heart-screen {
+    position: fixed; inset: 0;
+    z-index: 80;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 2s ease;
+    background: #000;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  #heart-screen.active { opacity: 1; pointer-events: all; }
+  #heart-grid {
+    position: relative;
+    width: min(90vw, 560px);
+    height: min(90vw, 560px);
+  }
+  .heart-photo {
+    position: absolute;
+    width: var(--sz);
+    height: var(--sz);
+    background: #fff;
+    padding: 3px;
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    overflow: hidden;
+  }
+  .heart-photo img {
+    width: 100%; height: 100%;
+    object-fit: cover; background: #222;
+  }
+  .heart-photo.visible { opacity: 1; transform: scale(1); }
+  #finale-msg {
+    margin-top: 2rem;
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.2rem, 5vw, 2.2rem);
+    text-align: center;
+    color: #fff;
+    text-shadow: 0 0 30px rgba(255, 150, 200, 0.6);
+    opacity: 0;
+    transition: opacity 2s ease 1s;
+    letter-spacing: 0.05em;
+    padding: 0 1rem;
+  }
+  #finale-msg.visible { opacity: 1; }
+
+  /* ── STAR CANVAS ── */
+  #star-canvas {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 4;
+    opacity: 0;
+    transition: opacity 2s ease;
+  }
+  #star-canvas.visible { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- INTRO -->
+<div id="intro-screen">
+  <div id="intro-title">A day to remember</div>
+  <div id="password-area">
+    <div id="password-hint">6 dígitos</div>
+    <input id="password-input" type="tel" inputmode="numeric" maxlength="6" placeholder="_ _ _ _ _ _" autocomplete="off">
+    <div id="password-error">senha incorreta</div>
+  </div>
+</div>
+
+<!-- BACKGROUNDS -->
+<canvas id="star-canvas"></canvas>
+<canvas id="particle-canvas"></canvas>
+
+<!-- POLAROIDS -->
+<div id="polaroid-container"></div>
+
+<!-- STORY -->
+<div id="story-screen">
+  <div id="text-box">
+    <div id="typed-text"></div>
+    <div id="tap-hint">clique na tela para continuar</div>
+  </div>
+</div>
+
+<!-- AURORA -->
+<div id="aurora-screen">
+  <canvas id="aurora-canvas"></canvas>
+  <div id="aurora-text-box">
+    <div id="aurora-typed"></div>
+    <div id="aurora-tap-hint">clique na tela para continuar</div>
+  </div>
+</div>
+
+<!-- HEART FINALE -->
+<div id="heart-screen">
+  <div id="heart-grid"></div>
+  <div id="finale-msg">Você é o meu universo. 💫</div>
+</div>
+
+<audio id="bg-music" loop preload="auto">
+  <source src="musica.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+/* ════════════════════════════════════════════
+   CONSTANTS & STATE
+════════════════════════════════════════════ */
+const PASSWORD = '181221';
+const TOTAL_PHOTOS = 30;
+
+const STORY_TEXTS = [
+  "No início, tudo era envolto por uma escuridão silenciosa...",
+  "Os dias pareciam intermináveis, e as noites eram mais sombrias do que deveriam ser.",
+  "A vida possuía um propósito, mas ainda não tinha significado.",
+  "Havia um caminho a seguir, mas nenhum destino que realmente importasse.",
+  "Todos os sentimentos pareciam apenas uma gota de tinta branca perdida em uma imensa folha negra...",
+  "Até que, em um certo dia, um balde repleto das cores mais belas e vibrantes da existência foi derramado sobre aquela escuridão.", // idx 5 → cor começa
+  "Parecia impossível, mas aquela folha negra foi tomada por um oceano de cores, um oceano de emoções.",
+  "Os sentimentos mais profundos floresceram.",
+  "Os sonhos voltaram a brilhar.",
+  "Os objetivos se tornaram mais nítidos.",
+  "E a vida ganhou um sabor que eu jamais havia experimentado.",
+  "Um calor acolhedor, uma leveza capaz de fazer flutuar; todas as melhores emoções nasceram dali.",
+  "Nasceram de você.",
+  "E então os dias começaram a passar depressa, enquanto as noites se tornaram tão claras quanto o amanhecer.",
+  "Meus sentimentos ganharam intensidade, e a vida se tornou infinitamente melhor.",
+  "Você é a responsável por quem eu me tornei e por dar sentido a tudo o que antes parecia vazio.",
+  "Filmes novos, restaurantes novos, séries novas, músicas novas.",
+  "Nada disso teria significado se você não tivesse surgido na minha vida.",
+];
+
+const AURORA_TEXTS = [
+  "Você foi a primeira pessoa a me mostrar o verdadeiro significado do amor, a única capaz de trazer um propósito real para a minha existência.",
+  "Estar ao seu lado é como contemplar uma aurora boreal pela primeira vez: uma experiência mágica, hipnotizante e profundamente emocionante.",
+  "É como assistir ao céu escuro se transformar em um espetáculo de luzes dançantes, onde o impossível se torna realidade diante dos olhos.",
+  "Você é o meu maior exemplo, o meu maior orgulho, a minha razão de sorrir e a pessoa que eu vou amar pelo resto da minha vida.",
+  "Você transformou tudo o que era comum em algo especial, e tudo o que já era especial em algo indescritível.",
+  "Quero ser para sempre o seu amor, o seu amante, o seu amigo, o seu parceiro, o seu apoio e o seu eterno namorado.",
+  "Muito obrigado por ser exatamente quem você é. Muito obrigado por existir.",
+  "Eu te amo mais do que as palavras conseguem expressar.",
+  "Você é o meu universo.",
+];
+
+const COLOR_START_IDX = 5;  // story idx that triggers colors
+const PHOTO_START_IDX = 6;  // story idx that starts polaroids appearing
+
+let currentStoryIdx = 0;
+let typingActive = false;
+let storyPhase = 'story'; // 'story' | 'aurora' | 'heart'
+let colorUnlocked = false;
+let tapHintTimer = null;
+
+/* ════════════════════════════════════════════
+   PASSWORD
+════════════════════════════════════════════ */
+const passwordInput = document.getElementById('password-input');
+const passwordError = document.getElementById('password-error');
+const introScreen   = document.getElementById('intro-screen');
+
+passwordInput.addEventListener('input', () => {
+  const val = passwordInput.value.replace(/\D/g,'').slice(0,6);
+  passwordInput.value = val;
+  if (val.length === 6) {
+    if (val === PASSWORD) {
+      passwordError.style.opacity = '0';
+      unlockStory();
+    } else {
+      passwordError.style.opacity = '1';
+      passwordInput.value = '';
+      passwordInput.style.animation = 'none';
+      void passwordInput.offsetWidth;
+    }
+  }
+});
+passwordInput.addEventListener('keydown', e => { if (e.key==='Enter') passwordInput.blur(); });
+
+function unlockStory() {
+  introScreen.style.opacity = '0';
+  setTimeout(() => {
+    introScreen.style.display = 'none';
+    startStory();
+  }, 1500);
+}
+
+/* ════════════════════════════════════════════
+   STARS
+════════════════════════════════════════════ */
+const starCanvas = document.getElementById('star-canvas');
+const sc = starCanvas.getContext('2d');
+let stars = [];
+
+function initStars() {
+  starCanvas.width  = window.innerWidth;
+  starCanvas.height = window.innerHeight;
+  stars = Array.from({length: 200}, () => ({
+    x: Math.random() * starCanvas.width,
+    y: Math.random() * starCanvas.height,
+    r: Math.random() * 1.4 + 0.3,
+    a: Math.random(),
+    speed: Math.random() * 0.008 + 0.002,
+    phase: Math.random() * Math.PI * 2
+  }));
+}
+
+function drawStars(t) {
+  sc.clearRect(0,0,starCanvas.width,starCanvas.height);
+  stars.forEach(s => {
+    const alpha = s.a * (0.5 + 0.5 * Math.sin(t * s.speed + s.phase));
+    sc.beginPath();
+    sc.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    sc.fillStyle = `rgba(255,255,255,${alpha})`;
+    sc.fill();
+  });
+}
+
+/* ════════════════════════════════════════════
+   PARTICLES
+════════════════════════════════════════════ */
+const pCanvas = document.getElementById('particle-canvas');
+const pc = pCanvas.getContext('2d');
+let particles = [];
+const COLORS = ['#ff6b9d','#c084fc','#67e8f9','#86efac','#fde68a','#fb923c','#f472b6','#a78bfa'];
+
+function initParticles() {
+  pCanvas.width  = window.innerWidth;
+  pCanvas.height = window.innerHeight;
+}
+
+function spawnParticle() {
+  particles.push({
+    x: Math.random() * pCanvas.width,
+    y: pCanvas.height + 10,
+    vx: (Math.random()-0.5)*1.2,
+    vy: -(Math.random()*1.5+0.8),
+    r: Math.random()*3+1.5,
+    color: COLORS[Math.floor(Math.random()*COLORS.length)],
+    life: 1,
+    decay: Math.random()*0.004+0.002
+  });
+}
+
+function drawParticles() {
+  pc.clearRect(0,0,pCanvas.width,pCanvas.height);
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.vy -= 0.005;
+    p.life -= p.decay;
+    pc.beginPath();
+    pc.arc(p.x, p.y, p.r, 0, Math.PI*2);
+    pc.fillStyle = p.color + Math.floor(p.life*255).toString(16).padStart(2,'0');
+    pc.fill();
+  });
+}
+
+/* ════════════════════════════════════════════
+   POLAROIDS
+════════════════════════════════════════════ */
+const polaroidContainer = document.getElementById('polaroid-container');
+let polaroidCount = 0;
+const MAX_POLAROIDS = 18;
+const usedSlots = [];
+
+function getImagePath(n) {
+  // Try jpg first; browser will handle missing gracefully with onerror
+  return `${n}.jpg`;
+}
+
+function tryExtensions(img, base, exts) {
+  let i = 0;
+  function next() {
+    if (i >= exts.length) return;
+    img.src = `${base}.${exts[i++]}`;
+  }
+  img.onerror = next;
+  next();
+}
+
+function addPolaroid() {
+  if (polaroidCount >= MAX_POLAROIDS) return;
+  const n = (polaroidCount % TOTAL_PHOTOS) + 1;
+  polaroidCount++;
+
+  const el = document.createElement('div');
+  el.className = 'polaroid';
+
+  const img = document.createElement('img');
+  img.alt = '';
+  img.draggable = false;
+  tryExtensions(img, String(n), ['jpg','jpeg','png','webp']);
+
+  el.appendChild(img);
+
+  const rot = (Math.random()-0.5)*14;
+  el.style.setProperty('--rot', `${rot}deg`);
+
+  // Safe placement avoiding center
+  let x, y, attempts = 0;
+  do {
+    x = Math.random() * 85 + 2;
+    y = Math.random() * 80 + 5;
+    attempts++;
+  } while (attempts < 20 && x > 28 && x < 72 && y > 25 && y < 75);
+
+  el.style.left = x+'%';
+  el.style.top  = y+'%';
+  el.style.transform = `rotate(${rot}deg) scale(0.3)`;
+
+  polaroidContainer.appendChild(el);
+  requestAnimationFrame(() => {
+    setTimeout(() => el.classList.add('visible'), 50);
+  });
+}
+
+/* ════════════════════════════════════════════
+   TYPING ENGINE
+════════════════════════════════════════════ */
+function typeText(targetEl, text, onDone) {
+  targetEl.textContent = '';
+  typingActive = true;
+  let i = 0;
+  resetTapHintTimer();
+
+  function type() {
+    if (i < text.length) {
+      targetEl.textContent += text[i++];
+      const delay = text[i-1] === '.' || text[i-1] === ',' ? 80
+                  : text[i-1] === ' ' ? 35
+                  : Math.random()*55 + 25;
+      setTimeout(type, delay);
+    } else {
+      typingActive = false;
+      onDone && onDone();
+    }
+  }
+  type();
+}
+
+/* ════════════════════════════════════════════
+   TAP HINT TIMER
+════════════════════════════════════════════ */
+function resetTapHintTimer() {
+  const hint = storyPhase === 'aurora'
+    ? document.getElementById('aurora-tap-hint')
+    : document.getElementById('tap-hint');
+  if (tapHintTimer) clearTimeout(tapHintTimer);
+  hint.classList.remove('visible');
+  tapHintTimer = setTimeout(() => {
+    if (!typingActive) hint.classList.add('visible');
+  }, 5000);
+}
+
+/* ════════════════════════════════════════════
+   STORY PHASE
+════════════════════════════════════════════ */
+const storyScreen = document.getElementById('story-screen');
+const typedText   = document.getElementById('typed-text');
+const tapHint     = document.getElementById('tap-hint');
+
+function startStory() {
+  storyScreen.classList.add('active');
+  initStars();
+  initParticles();
+  starCanvas.classList.add('visible');
+  loopRaf();
+  showStoryText(currentStoryIdx);
+}
+
+function showStoryText(idx) {
+  tapHint.classList.remove('visible');
+  typedText.style.opacity = '1';
+
+  // Trigger color + photos
+  if (idx >= COLOR_START_IDX && !colorUnlocked) {
+    colorUnlocked = true;
+    triggerColors();
+  }
+  if (idx >= PHOTO_START_IDX && idx < STORY_TEXTS.length) {
+    if (polaroidCount < MAX_POLAROIDS) setTimeout(addPolaroid, 600);
+    if (polaroidCount < MAX_POLAROIDS) setTimeout(addPolaroid, 1800);
+  }
+
+  typeText(typedText, STORY_TEXTS[idx], () => {
+    tapHint.classList.add('visible');
+    resetTapHintTimer();
+  });
+}
+
+function advanceStory() {
+  if (typingActive) {
+    // Skip typing
+    const texts = storyPhase === 'aurora' ? AURORA_TEXTS : STORY_TEXTS;
+    const idx   = storyPhase === 'aurora'
+      ? currentStoryIdx - STORY_TEXTS.length
+      : currentStoryIdx;
+    const el = storyPhase === 'aurora'
+      ? document.getElementById('aurora-typed')
+      : typedText;
+    el.textContent = texts[idx];
+    typingActive = false;
+    const hint = storyPhase === 'aurora'
+      ? document.getElementById('aurora-tap-hint')
+      : tapHint;
+    hint.classList.add('visible');
+    return;
+  }
+
+  if (storyPhase === 'story') {
+    currentStoryIdx++;
+    if (currentStoryIdx < STORY_TEXTS.length) {
+      fadeAndShow(typedText, () => showStoryText(currentStoryIdx));
+    } else {
+      // Transition to aurora
+      storyPhase = 'aurora';
+      fadeOutStory(() => showAurora());
+    }
+  } else if (storyPhase === 'aurora') {
+    const aIdx = currentStoryIdx - STORY_TEXTS.length;
+    currentStoryIdx++;
+    const nextAIdx = currentStoryIdx - STORY_TEXTS.length;
+    if (nextAIdx < AURORA_TEXTS.length) {
+      const el = document.getElementById('aurora-typed');
+      fadeAndShow(el, () => showAuroraText(nextAIdx));
+    } else {
+      storyPhase = 'heart';
+      showHeart();
+    }
+  }
+}
+
+function fadeAndShow(el, cb) {
+  el.style.opacity = '0';
+  setTimeout(cb, 700);
+  setTimeout(() => { el.style.opacity = '1'; }, 1400);
+}
+
+function fadeOutStory(cb) {
+  storyScreen.style.opacity = '0';
+  storyScreen.style.transition = 'opacity 1.5s ease';
+  setTimeout(cb, 1500);
+}
+
+/* ════════════════════════════════════════════
+   COLOR TRANSITION
+════════════════════════════════════════════ */
+function triggerColors() {
+  pCanvas.classList.add('visible');
+  document.getElementById('bg-music').play().catch(()=>{});
+  // Gradually tint background
+  let hue = 0;
+  let step = 0;
+  function tintBg() {
+    step++;
+    hue = (step * 0.5) % 360;
+    storyScreen.style.background =
+      `radial-gradient(ellipse at center, hsl(${hue},40%,8%) 0%, #000 80%)`;
+    if (step < 200) requestAnimationFrame(tintBg);
+  }
+  tintBg();
+}
+
+/* ════════════════════════════════════════════
+   AURORA PHASE
+════════════════════════════════════════════ */
+const auroraScreen = document.getElementById('aurora-screen');
+const auroraCanvas = document.getElementById('aurora-canvas');
+const aCtx = auroraCanvas.getContext('2d');
+const auroraTyped = document.getElementById('aurora-typed');
+const auroraHint  = document.getElementById('aurora-tap-hint');
+
+function showAurora() {
+  // Move remaining polaroids to back
+  polaroidContainer.style.zIndex = '3';
+
+  // Fill aurora screen with floating photos
+  spawnAuroraPhotos();
+
+  auroraCanvas.width  = window.innerWidth;
+  auroraCanvas.height = window.innerHeight;
+  auroraScreen.classList.add('active');
+  animateAurora();
+
+  // Show first aurora text
+  showAuroraText(0);
+}
+
+function showAuroraText(idx) {
+  auroraHint.classList.remove('visible');
+  auroraTyped.style.opacity = '1';
+  typeText(auroraTyped, AURORA_TEXTS[idx], () => {
+    auroraHint.classList.add('visible');
+    resetTapHintTimer();
+  });
+}
+
+let auroraT = 0;
+function animateAurora() {
+  auroraT += 0.003;
+  auroraCanvas.width  = window.innerWidth;
+  auroraCanvas.height = window.innerHeight;
+  const w = auroraCanvas.width, h = auroraCanvas.height;
+  aCtx.clearRect(0,0,w,h);
+
+  // Stars
+  drawStarsOnCtx(aCtx, w, h, auroraT);
+
+  // Aurora bands
+  const bands = [
+    { color1:'rgba(0,200,160,0)', color2:'rgba(0,200,160,0.18)', y: 0.2 },
+    { color1:'rgba(100,80,200,0)', color2:'rgba(100,80,200,0.22)', y: 0.35 },
+    { color1:'rgba(224,64,251,0)', color2:'rgba(224,64,251,0.14)', y: 0.25 },
+    { color1:'rgba(0,188,212,0)', color2:'rgba(0,188,212,0.2)', y: 0.30 },
+  ];
+  bands.forEach((b, bi) => {
+    const waveY = b.y * h + Math.sin(auroraT*0.7 + bi*1.3) * h * 0.06;
+    const grad = aCtx.createLinearGradient(0, waveY - h*0.15, 0, waveY + h*0.12);
+    grad.addColorStop(0, b.color1);
+    grad.addColorStop(0.5, b.color2);
+    grad.addColorStop(1, b.color1);
+
+    aCtx.save();
+    aCtx.beginPath();
+    for (let x=0; x<=w; x+=4) {
+      const yOff = Math.sin(auroraT + x*0.008 + bi*2) * h*0.04
+                 + Math.sin(auroraT*0.5 + x*0.015) * h*0.025;
+      if (x===0) aCtx.moveTo(x, waveY + yOff);
+      else aCtx.lineTo(x, waveY + yOff);
+    }
+    for (let x=w; x>=0; x-=4) {
+      const yOff = Math.sin(auroraT + x*0.008 + bi*2) * h*0.04
+                 + Math.sin(auroraT*0.5 + x*0.015) * h*0.025;
+      aCtx.lineTo(x, waveY + yOff + h*0.1);
+    }
+    aCtx.closePath();
+    aCtx.fillStyle = grad;
+    aCtx.fill();
+    aCtx.restore();
+  });
+
+  if (auroraScreen.classList.contains('active') && storyPhase !== 'heart') {
+    requestAnimationFrame(animateAurora);
+  }
+}
+
+function drawStarsOnCtx(ctx, w, h, t) {
+  stars.forEach(s => {
+    const alpha = s.a * (0.3 + 0.7 * Math.sin(t * 200 * s.speed + s.phase));
+    ctx.beginPath();
+    ctx.arc(s.x * w / (starCanvas.width||w), s.y * h / (starCanvas.height||h), s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fill();
+  });
+}
+
+function spawnAuroraPhotos() {
+  const container = auroraScreen;
+  for (let i = 0; i < 12; i++) {
+    const n = (i % TOTAL_PHOTOS) + 1;
+    const div = document.createElement('div');
+    div.className = 'aurora-photo';
+    const rot = (Math.random()-0.5)*20;
+    div.style.setProperty('--rot', `${rot}deg`);
+    div.style.setProperty('--dur', `${3+Math.random()*4}s`);
+    div.style.setProperty('--delay', `${Math.random()*2}s`);
+    div.style.left = (Math.random()*90)+'%';
+    div.style.top  = (Math.random()*55)+'%';
+    div.style.zIndex = 65;
+
+    const img = document.createElement('img');
+    img.alt = '';
+    img.draggable = false;
+    tryExtensions(img, String(n), ['jpg','jpeg','png','webp']);
+    div.appendChild(img);
+    container.appendChild(div);
+
+    setTimeout(() => { div.style.opacity = '0.8'; }, 500 + i*200);
+  }
+}
+
+/* ════════════════════════════════════════════
+   HEART FINALE
+════════════════════════════════════════════ */
+const heartScreen = document.getElementById('heart-screen');
+const heartGrid   = document.getElementById('heart-grid');
+const finaleMsg   = document.getElementById('finale-msg');
+
+// Heart pixel mask (10x10 scaled)
+const HEART_MASK = [
+  [0,1,1,0,0,0,1,1,0,0],
+  [1,1,1,1,0,1,1,1,1,0],
+  [1,1,1,1,1,1,1,1,1,0],
+  [1,1,1,1,1,1,1,1,1,0],
+  [0,1,1,1,1,1,1,1,0,0],
+  [0,0,1,1,1,1,1,0,0,0],
+  [0,0,0,1,1,1,0,0,0,0],
+  [0,0,0,0,1,0,0,0,0,0],
+];
+
+function showHeart() {
+  auroraScreen.style.opacity = '0';
+  setTimeout(() => {
+    heartScreen.classList.add('active');
+    buildHeart();
+  }, 1000);
+}
+
+function buildHeart() {
+  heartGrid.innerHTML = '';
+  const rows = HEART_MASK.length;
+  const cols = HEART_MASK[0].length;
+  const size = Math.min(window.innerWidth * 0.88, 560);
+  heartGrid.style.width  = size+'px';
+  heartGrid.style.height = size+'px';
+
+  const cellW = size / cols;
+  const cellH = size / rows;
+  const sz    = Math.min(cellW, cellH) * 0.88;
+
+  let photoIdx = 1;
+  const cells = [];
+
+  HEART_MASK.forEach((row, ri) => {
+    row.forEach((val, ci) => {
+      if (!val) return;
+      const div = document.createElement('div');
+      div.className = 'heart-photo';
+      div.style.setProperty('--sz', sz+'px');
+      div.style.width  = sz+'px';
+      div.style.height = sz+'px';
+      div.style.left   = (ci * cellW + (cellW - sz)/2)+'px';
+      div.style.top    = (ri * cellH + (cellH - sz)/2)+'px';
+
+      const img = document.createElement('img');
+      img.alt = '';
+      img.draggable = false;
+      tryExtensions(img, String(photoIdx), ['jpg','jpeg','png','webp']);
+      photoIdx = (photoIdx % TOTAL_PHOTOS) + 1;
+      div.appendChild(img);
+      heartGrid.appendChild(div);
+      cells.push(div);
+    });
+  });
+
+  cells.forEach((c, i) => {
+    setTimeout(() => c.classList.add('visible'), 300 + i * 80);
+  });
+
+  setTimeout(() => {
+    finaleMsg.classList.add('visible');
+  }, 300 + cells.length * 80 + 800);
+}
+
+/* ════════════════════════════════════════════
+   MAIN LOOP
+════════════════════════════════════════════ */
+let rafT = 0;
+let particleTimer = 0;
+function loopRaf(ts = 0) {
+  rafT = ts;
+  drawStars(ts * 0.001);
+  if (colorUnlocked) {
+    particleTimer++;
+    if (particleTimer % 3 === 0) spawnParticle();
+    drawParticles();
+  }
+  if (storyPhase !== 'heart') requestAnimationFrame(loopRaf);
+}
+
+/* ════════════════════════════════════════════
+   INPUT HANDLERS
+════════════════════════════════════════════ */
+function handleTap() {
+  if (storyPhase === 'story' || storyPhase === 'aurora') {
+    advanceStory();
+  }
+}
+
+document.addEventListener('click', handleTap);
+document.addEventListener('touchend', e => {
+  if (e.target === passwordInput) return;
+  e.preventDefault();
+  handleTap();
+}, { passive: false });
+
+/* ════════════════════════════════════════════
+   RESIZE
+════════════════════════════════════════════ */
+window.addEventListener('resize', () => {
+  initStars();
+  initParticles();
+  if (auroraScreen.classList.contains('active')) {
+    auroraCanvas.width  = window.innerWidth;
+    auroraCanvas.height = window.innerHeight;
+  }
+});
+</script>
+</body>
+</html>
